@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard - Smart Task Manager</title>
+    <link rel="stylesheet" href="css/stylesheet.css">
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <h2>Menu</h2>
+        <a href="dashboard.html">➕ Add Task</a>
+        <a href="all_tasks.html">📋 All Tasks</a>
+        <a href="completed.html">✔️ Completed</a>
+        <a href="deleted.html">🗑️ Deleted</a>
+        <a href="index.html">🚪 Logout</a>
+    </div>
+
+    <div class="content">
+
+        <div id="quoteBox" class="info-box">
+            <h3>Daily Motivation</h3>
+            <p id="quoteText">Loading quote...</p>
+        </div>
+
+        <div id="timeBox" class="info-box">
+            <h3>Your Local Time</h3>
+            <p id="timeText">Fetching...</p>
+        </div>
+
+        <h1>Add New Task</h1>
+
+        <input type="text" id="taskInput" placeholder="Task Title">
+
+        <input type="date" id="taskDate">
+        <input type="time" id="taskTime">
+
+        <button id="addTaskBtn">Add Task</button>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/reminder.js"></script>
+    <script src="js/interoperability.js"></script>
+
+</body>
+
+</html>

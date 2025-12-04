@@ -1,22 +1,29 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Smart Task Manager</title>
-    <link rel="stylesheet" href="css/stylesheet.css">
-  </head>
-  <body>
-    <h1>Smart Task Manager</h1>
 
-    <div class="task-input-container">
-      <input type="text" id="taskInput" placeholder="Enter new task">
-      <button id="addTaskBtn">Add Task</button>
-    </div>
+<head>
+  <title>Login - Smart Task Manager</title>
+  <link rel="stylesheet" href="css/stylesheet.css">
+</head>
 
-    <ul id="taskList"></ul>
+<body>
 
-    <div id="loader" class="loader hidden">Loading...</div>
+  <div class="auth-container">
+    <h2>Login</h2>
 
-    <script src="js/main.js"></script>
-  </body>
+    <input type="text" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+
+    <button id="loginBtn">Login</button>
+
+    <p>Don't have an account?
+      <a href="signup.html">Create Account</a>
+    </p>
+  </div>
+
+  <script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+
+</body>
+
 </html>

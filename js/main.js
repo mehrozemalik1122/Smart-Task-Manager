@@ -1,154 +1,266 @@
-const taskInput = document.getElementById("taskInput");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const taskList = document.getElementById("taskList");
-const loader = document.getElementById("loader");
+(() => {
 
-const completeSound = new Audio("assets/sounds/task-done.mp3");
-const deleteSound = new Audio("assets/sounds/delete-done.mp3");
+  // initialize arrays from localStorage (will be replaced by server data after API calls)
 
-const API_URL = "/task-manager/php/task.php";
-let tasks = [];
+  window.tasks = JSON.parse(localStorage.getItem("stm_tasks") || "[]");
 
-window.addEventListener("DOMContentLoaded", loadTasks);
+  window.completedTasks = JSON.parse(localStorage.getItem("stm_completed") || "[]");
 
-async function loadTasks() {
-  try {
-    showLoader(true);
-    const response = await fetch(`${API_URL}?action=get`);
-    tasks = await response.json();
-    renderTasks();
-  } catch (error) {
-    console.error("Error loading tasks:", error);
-    showPopup("Failed to load tasks.");
-  } finally {
-    showLoader(false);
+  window.deletedTasks = JSON.parse(localStorage.getItem("stm_deleted") || "[]");
+
+
+
+  // sounds
+
+  window.completeSound = new Audio("assets/sounds/task-done.mp3");
+
+  window.deleteSound = new Audio("assets/sounds/delete-done.mp3");
+
+
+
+  // DOM elements (may be undefined on pages without these)
+
+  const taskInput = document.getElementById("taskInput");
+
+  const addTaskBtn = document.getElementById("addTaskBtn");
+
+  const taskDate = document.getElementById("taskDate");
+
+  const taskTime = document.getElementById("taskTime");
+
+  const loader = document.getElementById("loader");
+
+
+
+  window.saveAll = () => {
+
+    localStorage.setItem("stm_tasks", JSON.stringify(window.tasks));
+
+    localStorage.setItem("stm_completed", JSON.stringify(window.completedTasks));
+
+    localStorage.setItem("stm_deleted", JSON.stringify(window.deletedTasks));
+
+  };
+
+
+
+  window.showPopup = (message) => {
+
+    const popup = document.createElement("div");
+
+    popup.className = "popup";
+
+    popup.textContent = message;
+
+    document.body.appendChild(popup);
+
+    setTimeout(() => popup.classList.add("show"), 10);
+
+    setTimeout(() => {
+
+      popup.classList.remove("show");
+
+      setTimeout(() => popup.remove(), 300);
+
+    }, 1500);
+
+  };
+
+
+
+  function createTaskObject(text, dateStr, timeStr) {
+
+    let datetime = null;
+
+    if (dateStr) {
+
+      const t = timeStr ? timeStr : "00:00";
+
+      const d = new Date(`${dateStr}T${t}`);
+
+      if (!isNaN(d.getTime())) datetime = d.toISOString();
+
+    }
+
+    return {
+
+      id: Date.now().toString() + Math.floor(Math.random() * 1000),
+
+      text,
+
+      datetime,
+
+      completed: false,
+
+      deleted: false,
+
+      reminded: false
+
+    };
+
   }
-}
 
-addTaskBtn.addEventListener("click", async () => {
-  const taskText = taskInput.value.trim();
-  if (taskText === "") {
-    showPopup("Please enter a task first!");
-    return;
-  }
 
-  try {
-    showLoader(true);
-    const response = await fetch(`${API_URL}?action=add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: taskText }),
+
+  window.showLoader = function(state) {
+
+    if (!loader) return;
+
+    if (state) loader.classList.remove("hidden");
+
+    else loader.classList.add("hidden");
+
+  };
+
+
+
+  // on add button click -> call API.addTask and then refresh tasks from server
+
+  if (addTaskBtn) {
+
+    addTaskBtn.addEventListener("click", async () => {
+
+      const taskText = taskInput.value.trim();
+
+      if (!taskText) {
+
+        showPopup("Please enter a task first!");
+
+        return;
+
+      }
+
+      const dateVal = taskDate?.value || "";
+
+      const timeVal = taskTime?.value || "";
+
+      if (!dateVal || !timeVal) {
+
+        showPopup("Please select both date and time!");
+
+        return;
+
+      }
+
+      const datetime = `${dateVal}T${timeVal}:00`;
+
+
+
+      try {
+
+        showLoader(true);
+
+        await api.addTask({ text: taskText, datetime });
+
+        const serverData = await api.getTasks();
+        
+        window.tasks = serverData.all || [];
+        window.completedTasks = serverData.completed || [];
+        window.deletedTasks = serverData.deleted || [];
+
+        window.saveAll();
+
+        if (typeof window.renderCurrentPage === "function") window.renderCurrentPage();
+
+        showPopup("Task Added!");
+
+      } catch (err) {
+
+        console.error(err);
+
+        showPopup("Failed to add task");
+
+      } finally {
+
+        showLoader(false);
+
+        taskInput.value = "";
+
+        if (taskDate) taskDate.value = "";
+
+        if (taskTime) taskTime.value = "";
+
+      }
+
     });
-    const newTask = await response.json();
-    tasks.unshift(newTask);
-    renderTasks();
-    taskInput.value = "";
-    showPopup("Task Added!");
-  } catch (error) {
-    console.error("Error adding task:", error);
-    showPopup("Failed to add task.");
-  } finally {
-    showLoader(false);
-  }
-});
 
-taskList.addEventListener("click", async (event) => {
-  const target = event.target;
-  const taskId = target.closest("li").dataset.id;
-
-  if (target.classList.contains("delete-btn")) {
-    try {
-      showLoader(true);
-      const response = await fetch(`${API_URL}?action=delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        tasks = tasks.filter((t) => t.id != taskId);
-        renderTasks();
-        deleteSound.play();
-        showPopup("Task Deleted!");
-      }
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      showPopup("Failed to delete task.");
-    } finally {
-      showLoader(false);
-    }
   }
 
-  if (target.classList.contains("complete-btn")) {
-    const task = tasks.find((t) => t.id == taskId);
-    const newState = !task.completed;
+
+
+  // helper to load initial tasks from server on page load
+
+  window.loadFromServer = async function() {
 
     try {
+
       showLoader(true);
-      const response = await fetch(`${API_URL}?action=update`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, completed: newState }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        task.completed = newState;
-        renderTasks();
-        completeSound.play();
-        showPopup(
-          newState ? "Task Marked Complete!" : "Task Marked Incomplete!"
-        );
+
+      const serverData = await api.getTasks();
+
+      // server returns organized tasks by status
+      window.tasks = serverData.all || [];
+      window.completedTasks = serverData.completed || [];
+      window.deletedTasks = serverData.deleted || [];
+
+      window.saveAll();
+
+      if (typeof window.renderCurrentPage === "function") {
+        window.renderCurrentPage();
       }
-    } catch (error) {
-      console.error("Error updating task:", error);
-      showPopup("Failed to update task.");
+
+    } catch (e) {
+
+      console.error("Failed to load tasks from server", e);
+      showPopup("Failed to load tasks");
+
     } finally {
+
       showLoader(false);
+
     }
-  }
-});
 
-function renderTasks() {
-  taskList.innerHTML = "";
-  tasks.forEach((task) => {
-    const li = document.createElement("li");
-    li.dataset.id = task.id;
-    li.classList.add("fade-in");
+  };
 
-    const span = document.createElement("span");
-    span.textContent = task.text;
-    if (task.completed == 1 || task.completed === true)
-      span.classList.add("completed");
-    li.appendChild(span);
 
-    const completeBtn = document.createElement("button");
-    completeBtn.textContent = "✔️";
-    completeBtn.className = "complete-btn";
-    li.appendChild(completeBtn);
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "🗑️";
-    deleteBtn.className = "delete-btn";
-    li.appendChild(deleteBtn);
+  // run on DOM ready
 
-    taskList.appendChild(li);
+  window.addEventListener("DOMContentLoaded", async () => {
+
+    // Check authentication on protected pages
+    const currentPage = window.location.pathname.split('/').pop() || window.location.pathname;
+    const isProtectedPage = currentPage.includes('dashboard.html') || 
+                           currentPage.includes('all_tasks.html') || 
+                           currentPage.includes('completed.html') || 
+                           currentPage.includes('deleted.html');
+    
+    if (isProtectedPage && typeof api !== "undefined") {
+      try {
+        const authResponse = await api.validateSession();
+        if (!authResponse.authenticated) {
+          window.location.href = 'index.html';
+          return;
+        }
+        // Only load tasks after successful authentication
+        await window.loadFromServer();
+        
+      } catch (error) {
+        window.location.href = 'index.html';
+        return;
+      }
+    } else {
+      // For non-protected pages or if api not available
+      if (typeof api !== "undefined") {
+        window.loadFromServer();
+      } else {
+        // fallback: just render whatever is in localStorage
+        if (typeof window.renderCurrentPage === "function") window.renderCurrentPage();
+      }
+    }
+
   });
-}
 
-function showLoader(state) {
-  if (state) loader.classList.remove("hidden");
-  else loader.classList.add("hidden");
-}
 
-function showPopup(message) {
-  const popup = document.createElement("div");
-  popup.className = "popup";
-  popup.textContent = message;
-  document.body.appendChild(popup);
 
-  setTimeout(() => popup.classList.add("show"), 10);
-  setTimeout(() => {
-    popup.classList.remove("show");
-    setTimeout(() => popup.remove(), 300);
-  }, 1500);
-}
+})();
