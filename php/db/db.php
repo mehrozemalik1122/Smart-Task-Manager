@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $host = "localhost";
 $user = "root";
-$pass = "Hamza123@sql";
+$pass = "";
 $dbname = "task_manager_2";
 
 $conn = new mysqli($host, $user, $pass, $dbname);
